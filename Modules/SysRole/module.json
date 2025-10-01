@@ -1,0 +1,13 @@
+{
+    "name": "SysRole",
+    "alias": "sysrole",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\SysRole\\Providers\\SysRoleServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}

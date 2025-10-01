@@ -1,0 +1,11 @@
+{
+    "name": "Face",
+    "alias": "face",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Face\\Providers\\FaceServiceProvider"
+    ],
+    "files": []
+}

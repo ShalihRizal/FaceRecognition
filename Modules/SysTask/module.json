@@ -1,0 +1,13 @@
+{
+    "name": "SysTask",
+    "alias": "systask",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\SysTask\\Providers\\SysTaskServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}

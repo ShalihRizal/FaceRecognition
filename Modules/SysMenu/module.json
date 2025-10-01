@@ -1,0 +1,13 @@
+{
+    "name": "SysMenu",
+    "alias": "sysmenu",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\SysMenu\\Providers\\SysMenuServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}
