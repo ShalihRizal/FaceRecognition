@@ -5,7 +5,7 @@
 <div class="container-fluid">
     <div class="row">
         {{-- Profile Section --}}
-       <div class="col-lg-4 col-md-4">
+        <div class="col-lg-4 col-md-4">
             <div class="card card-shadow">
                 <div class="card-body text-center position-relative">
                     {{-- Foto Profil --}}
@@ -24,7 +24,7 @@
                             </label>
 
                             {{-- Hidden File Input --}}
-                            <input type="file" id="photoInput" name="user_image" class="d-none" accept="image/*">
+                            <input type="file" id="photoInput" name="user_image[]" class="d-none" accept="image/*" multiple>
                         </div>
 
                         {{-- Tombol aksi (hidden dulu) --}}
@@ -73,7 +73,7 @@
                             </tr>
                         </table>
 
-                        <div id="actionButtons{{ $user->user_id }}"  style="display:none;">
+                        <div id="actionButtons{{ $user->user_id }}" style="display:none;">
                             <button type="submit" class="btn btn-add-data">Update</button>
                             <button type="button" class="btn button-cancel" onclick="cancelEdit({{ $user->user_id }})">Cancel</button>
                         </div>
@@ -133,96 +133,96 @@
 </div>
 @endsection
 @section('script')
-    <script>
+<script>
+    function editDataKaryawan(id) {
+        // Ambil isi teks Nama Karyawan lalu ubah jadi input
+        let nama = document.getElementById("namaKaryawan" + id).innerText.replace(":", "").trim();
+        document.getElementById("namaKaryawan" + id).innerHTML =
+            '<div class="form-floating"><input type="text" class="form-control p-1" name="user_name" value="' + nama + '"></div>';
 
-        function editDataKaryawan(id) {
-            // Ambil isi teks Nama Karyawan lalu ubah jadi input
-            let nama = document.getElementById("namaKaryawan"+id).innerText.replace(":", "").trim();
-            document.getElementById("namaKaryawan"+id).innerHTML = 
-                '<div class="form-floating"><input type="text" class="form-control p-1" name="user_name" value="'+nama+'"></div>';
+        // Ambil isi teks Email Karyawan lalu ubah jadi input email
+        let email = document.getElementById("tglLahir" + id).innerText.replace(":", "").trim();
+        document.getElementById("tglLahir" + id).innerHTML =
+            '<div class="form-floating"><input type="email" class="form-control p-1" name="user_email" value="' + email + '"></div>';
 
-            // Ambil isi teks Email Karyawan lalu ubah jadi input email
-            let email = document.getElementById("tglLahir"+id).innerText.replace(":", "").trim();
-            document.getElementById("tglLahir"+id).innerHTML = 
-                '<div class="form-floating"><input type="email" class="form-control p-1" name="user_email" value="'+email+'"></div>';
+        // Ganti tombol ijazah jadi input file
+        document.getElementById("ijazahField" + id).innerHTML =
+            '<input type="file" name="ijazah" class="form-control">';
 
-            // Ganti tombol ijazah jadi input file
-            document.getElementById("ijazahField"+id).innerHTML = 
-                '<input type="file" name="ijazah" class="form-control">';
+        // Tampilkan tombol Update + Cancel
+        document.getElementById("actionButtons" + id).style.display = "flex";
+        document.getElementById("btneditdatakaryawan").style.display = "none";
+        document.getElementById("actionButtons" + id).classList.add("gap-2", "mt-2");
 
-            // Tampilkan tombol Update + Cancel
-            document.getElementById("actionButtons"+id).style.display = "flex";
-            document.getElementById("btneditdatakaryawan").style.display = "none";
-            document.getElementById("actionButtons"+id).classList.add("gap-2", "mt-2");
+    }
 
-        }
+    function cancelEdit(id) {
+        // reload halaman biar kembali ke kondisi awal
+        location.reload();
+    }
 
-        function cancelEdit(id) {
-            // reload halaman biar kembali ke kondisi awal
-            location.reload();
-        }
-
-        document.addEventListener("DOMContentLoaded", function(){
-            document.querySelectorAll("form[id^='formUpdate'], #formPhotoUpdate").forEach(function(form){
-                form.addEventListener("submit", function(e){
-                    // tampilkan Swal loading
-                    Swal.fire({
-                        title: 'Updating...',
-                        text: 'Please wait while we save your changes',
-                        allowOutsideClick: false,
-                        didOpen: () => {
-                            Swal.showLoading()
-                        }
-                    });
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll("form[id^='formUpdate'], #formPhotoUpdate").forEach(function(form) {
+            form.addEventListener("submit", function(e) {
+                // tampilkan Swal loading
+                Swal.fire({
+                    title: 'Updating...',
+                    text: 'Please wait while we save your changes',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading()
+                    }
                 });
             });
         });
+    });
 
-        document.addEventListener("DOMContentLoaded", function() {
-            @if(session('successMessage'))
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil!',
-                    text: '{{ session('successMessage') }}',
-                    showConfirmButton: false,
-                    timer: 2000
-                });
-            @endif
-
-            @if(session('errorMessage'))
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal!',
-                    text: '{{ session('errorMessage') }}',
-                    showConfirmButton: true
-                });
-            @endif
+    document.addEventListener("DOMContentLoaded", function() {
+        @if(session('successMessage'))
+        Swal.fire({
+            icon: 'success',
+            title: 'Berhasil!',
+            text: '{{ session('
+            successMessage ') }}',
+            showConfirmButton: false,
+            timer: 2000
         });
+        @endif
 
-        const photoInput = document.getElementById("photoInput");
-        const profileImage = document.getElementById("profileImage");
-        const photoActionButtons = document.getElementById("photoActionButtons");
-        let oldSrc = profileImage.src;
+        @if(session('errorMessage'))
+        Swal.fire({
+            icon: 'error',
+            title: 'Gagal!',
+            text: '{{ session('
+            errorMessage ') }}',
+            showConfirmButton: true
+        });
+        @endif
+    });
 
-        // Saat pilih file → tampilkan preview + tombol aksi
-        photoInput.addEventListener("change", function() {
-            if (this.files && this.files[0]) {
-                let reader = new FileReader();
-                reader.onload = function(e) {
-                    profileImage.src = e.target.result;
-                    photoActionButtons.style.display = "flex"; // munculkan tombol
-                }
-                reader.readAsDataURL(this.files[0]);
+    const photoInput = document.getElementById("photoInput");
+    const profileImage = document.getElementById("profileImage");
+    const photoActionButtons = document.getElementById("photoActionButtons");
+    let oldSrc = profileImage.src;
+
+    // Saat pilih file → tampilkan preview + tombol aksi
+    photoInput.addEventListener("change", function() {
+        if (this.files && this.files[0]) {
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                profileImage.src = e.target.result;
+                photoActionButtons.style.display = "flex"; // munculkan tombol
             }
-        });
-
-        // Cancel → balikin foto lama + hide tombol
-        function cancelPhoto() {
-            profileImage.src = oldSrc;
-            photoInput.value = ""; // reset input file
-            photoActionButtons.style.display = "none";
+            reader.readAsDataURL(this.files[0]);
         }
-        
-    </script>
+    });
+
+    // Cancel → balikin foto lama + hide tombol
+    function cancelPhoto() {
+        profileImage.src = oldSrc;
+        photoInput.value = ""; // reset input file
+        photoActionButtons.style.display = "none";
+    }
+</script>
 
 @endsection

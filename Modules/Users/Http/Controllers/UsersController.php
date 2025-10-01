@@ -185,7 +185,7 @@ class UsersController extends Controller
                 ];
             } else {
                 if (!Hash::check($request->user_password_check, Auth::user()->user_password)) {
-                    return redirect('profile/'.$id)->with('errorMessage', 'Password salah!');
+                    return redirect('profile/' . $id)->with('errorMessage', 'Password salah!');
                 }
 
                 $dataUser = [
@@ -205,7 +205,7 @@ class UsersController extends Controller
             } else {
 
                 if (!Hash::check($request->user_password_check, Auth::user()->user_password)) {
-                    return redirect('profile/'.$id)->with('errorMessage', 'Password salah!');
+                    return redirect('profile/' . $id)->with('errorMessage', 'Password salah!');
                 }
 
                 $dataUser = [
@@ -220,34 +220,48 @@ class UsersController extends Controller
         $this->_logHelper->store($this->module, $request->user_name, 'update');
         DB::commit();
 
-        return redirect('profile/'.$id)->with('successMessage', 'Profil berhasil diubah');
+        return redirect('profile/' . $id)->with('successMessage', 'Profil berhasil diubah');
     }
 
-    public function updateProfileUser(Request $request, $id){
-
+    public function updateProfileUser(Request $request, $id)
+    {
         $user  = $this->_usersRepository->getById($id);
 
         if ($request->hasFile('user_image')) {
-            // hapus foto lama
-            if ($user->user_image && file_exists(storage_path('app/public/profile/' . $user->user_image))) {
-                unlink(storage_path('app/public/profile/' . $user->user_image));
+            $uploadedFiles = $request->file('user_image');
+            $storedImages = [];
+
+            // Ambil foto lama (jika ada) biar nggak ketimpa
+            $oldImages = [];
+            if ($user->user_image) {
+                $oldImages = json_decode($user->user_image, true) ?? [];
             }
 
-            $file = $request->file('user_image');
-            $filename = time().'.'.$file->getClientOriginalExtension();
-            $file->storeAs('public/profile', $filename);
+            foreach ($uploadedFiles as $file) {
+                $filename = uniqid() . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $file->storeAs('public/profile', $filename);
+
+                $storedImages[] = $filename;
+            }
+
+            // Gabungkan foto lama + baru
+            $allImages = array_merge($oldImages, $storedImages);
 
             $dataUser = [
-                'user_image' => $filename,
+                'user_image' => json_encode($allImages), // simpan dalam bentuk JSON
             ];
 
-            $this->_usersRepository->update(array_merge($dataUser, DataHelper::_signParams(false, true)), $id);
+            $this->_usersRepository->update(
+                array_merge($dataUser, DataHelper::_signParams(false, true)),
+                $id
+            );
 
-            return redirect('profile/'.$id)->with('successMessage', 'Profil berhasil diubah');
+            return redirect('profile/' . $id)->with('successMessage', 'Profil berhasil diubah');
         }
 
-        return redirect('profile/'.$id)->with('errorMessage', 'Profil gagal diubah');
+        return redirect('profile/' . $id)->with('errorMessage', 'Profil gagal diubah');
     }
+
 
     /**
      * Remove the specified resource from storage.

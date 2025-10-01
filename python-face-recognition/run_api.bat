@@ -1,6 +1,6 @@
 @echo off
-echo Starting Python Face Recognition API...
+echo Starting ADVANCED Python Face Recognition API...
 cd /d "C:\laragon\www\Toko Buku\Facerecog\python-face-recognition"
 call venv\Scripts\activate
-python face_api.py
+python enhanced_face_api.py
 pause

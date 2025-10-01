@@ -49,16 +49,46 @@
                             <p class="mb-1"><strong>Nama:</strong> {{ Auth::user()->user_name }}</p>
                             <p class="mb-0">
                                 <strong>Status Foto Profil:</strong>
-                                @if(Auth::user()->user_image)
-                                <span class="text-success">Tersedia</span> - Sistem akan membandingkan wajah dengan foto profil Anda
+                                @php
+                                $userImages = Auth::user()->user_image ? json_decode(Auth::user()->user_image, true) : null;
+                                $totalImages = is_array($userImages) ? count($userImages) : 0;
+                                @endphp
+
+                                @if(Auth::user()->user_image && $totalImages > 0)
+                                <span class="text-success">Tersedia ({{ $totalImages }} foto)</span> -
+                                Sistem akan membandingkan dengan semua foto profil Anda dan menggunakan kemiripan tertinggi
                                 @else
-                                <span class="text-warning">Tidak tersedia</span> - Sistem tidak dapat membandingkan dengan foto profil
+                                <span class="text-danger"><strong>Tidak tersedia</strong></span>
                                 @endif
                             </p>
                         </div>
+
+                        <!-- Alert khusus ketika tidak ada foto profil -->
+                        @if(!Auth::user()->user_image || $totalImages === 0)
+                        <div class="alert alert-danger">
+                            <h6><i class="fas fa-ban"></i> Akses Ditolak</h6>
+                            <p class="mb-2">
+                                <strong>Anda tidak dapat menambahkan data wajah karena belum memiliki foto profil!</strong>
+                            </p>
+                            <ul class="mb-2">
+                                <li>Silakan perbarui foto profil terlebih dahulu sebelum menambahkan data wajah</li>
+                                <li>Foto profil diperlukan untuk proses pencocokan dan validasi wajah</li>
+                                <li>Pastikan foto profil jelas dan menunjukkan wajah secara frontal</li>
+                            </ul>
+                            <div class="mt-3">
+                                <a href="{{ url('profile/' . Auth::id()) }}" class="btn btn-primary">
+                                    <i class="fas fa-user-edit"></i> Perbarui Foto Profil
+                                </a>
+                                <a href="{{ url('face') }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Kembali ke Daftar Wajah
+                                </a>
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 </div>
 
+                @if(Auth::user()->user_image && $totalImages > 0)
                 <form action="{{ url('face/store') }}" method="POST" enctype="multipart/form-data" id="faceForm">
                     @csrf
                     <input type="hidden" name="face_image" id="face_image">
@@ -69,9 +99,7 @@
                             <div class="alert alert-warning">
                                 <i class="fas fa-info-circle"></i>
                                 Pastikan wajah berada dalam area lingkaran dan pencahayaan cukup.
-                                @if(Auth::user()->user_image)
-                                Sistem akan membandingkan area wajah dengan foto profil Anda. Minimal kemiripan 70%.
-                                @endif
+                                Sistem akan membandingkan area wajah dengan {{ $totalImages }} foto profil Anda. Minimal kemiripan 70%.
                             </div>
 
                             <div class="camera-container position-relative border rounded p-3 mb-3" style="max-width: 640px; margin: 0 auto;">
@@ -92,7 +120,9 @@
                             <div id="previewSection" class="mt-4" style="display:none;">
                                 <h5>Preview Area Wajah yang akan Dicocokkan:</h5>
                                 <img id="photoPreview" src="" alt="Preview Wajah" class="img-thumbnail" style="max-width: 320px;">
-                                <p class="text-muted mt-2"><small>Hanya area wajah dalam lingkaran yang akan digunakan untuk pencocokan</small></p>
+                                <p class="text-muted mt-2">
+                                    <small>Hanya area wajah dalam lingkaran yang akan digunakan untuk pencocokan dengan foto profil</small>
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -104,11 +134,19 @@
                     <div class="row mb-3 mt-4">
                         <div class="col-md-12 text-end">
                             <button type="submit" class="btn btn-success btn-lg" id="submitBtn" disabled>
-                                <i class="fas fa-save"></i> Simpan Data Wajah
+                                <i class="fas fa-save"></i> Simpan & Cocokkan Wajah
                             </button>
                         </div>
                     </div>
                 </form>
+                @else
+                <!-- Disabled form ketika tidak ada foto profil -->
+                <div class="alert alert-warning text-center">
+                    <i class="fas fa-lock fa-2x mb-3"></i>
+                    <h5>Form Tidak Tersedia</h5>
+                    <p class="mb-0">Form input data wajah dinonaktifkan karena Anda belum memiliki foto profil.</p>
+                </div>
+                @endif
             </div>
         </div>
     </div>
@@ -116,6 +154,7 @@
 @endsection
 
 @section('script')
+@if(Auth::user()->user_image && $totalImages > 0)
 <script>
     (function() {
         var width = 640;
@@ -382,6 +421,7 @@
         window.addEventListener('load', startup, false);
     })();
 </script>
+@endif
 
 <style>
     .camera-container {
