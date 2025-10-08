@@ -14,6 +14,7 @@
 Route::prefix('face')->group(function () {
     Route::get('/', 'FaceController@index');
     Route::get('/create', 'FaceController@create');
+    Route::get('/createmultiple', 'FaceController@createmultiple');
     Route::get('/show/{id}', 'FaceController@show');
     Route::get('/edit/{id}', 'FaceController@edit');
     Route::post('/store', 'FaceController@store');

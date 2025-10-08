@@ -34,6 +34,12 @@
                             Face
                         </a>
                     </div>
+                    <div class="col-md-3">
+                        <a href="face/createmultiple" class="btn btn-add-data btnAdd text-white">
+                            <i data-feather="plus" width="16" height="16" class="me-2"></i>
+                            Face Multiple
+                        </a>
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <table id="table-data" class="table-data w-100">

@@ -70,6 +70,16 @@ class FaceController extends Controller
 
         return view('face::create', compact('users', 'faces'));
     }
+    public function createmultiple()
+    {
+        // if (Gate::denies(__FUNCTION__, $this->module)) {
+        //     return redirect('unauthorize');
+        // }
+        $users = $this->_usersRepository->getAll();
+        $faces = $this->_faceRepository->getAll();
+
+        return view('face::createmultiple', compact('users', 'faces'));
+    }
 
     /**
      * Store a newly created resource in storage.
