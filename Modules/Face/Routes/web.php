@@ -21,4 +21,5 @@ Route::prefix('face')->group(function () {
     Route::post('/update/{id}', 'FaceController@update');
     Route::get('/delete/{id}', 'FaceController@destroy');
     Route::get('/getdata/{id}', 'FaceController@getdata');
+    Route::post('/recognize-multiple', 'FaceController@recognizeMultipleFaces'); // Tambah route baru
 });

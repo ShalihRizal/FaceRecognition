@@ -158,7 +158,7 @@
 <script>
     (function() {
         var width = 640;
-        var height = 0;
+        var height = 480; // Fixed height untuk mencegah rotasi
         var streaming = false;
         var video = null;
         var canvas = null;
@@ -184,12 +184,9 @@
 
             startCamera();
 
-            video.addEventListener('canplay', function(ev) {
+            video.addEventListener('loadedmetadata', function(ev) {
                 if (!streaming) {
-                    height = video.videoHeight / (video.videoWidth / width);
-                    if (isNaN(height)) {
-                        height = width / (4 / 3);
-                    }
+                    // Force landscape orientation untuk kamera depan
                     video.setAttribute('width', width);
                     video.setAttribute('height', height);
                     canvas.setAttribute('width', width);
@@ -199,7 +196,7 @@
                     streaming = true;
 
                     // Create camera overlay after video dimensions are set
-                    createCameraOverlay();
+                    setTimeout(createCameraOverlay, 100);
                 }
             }, false);
 
@@ -233,8 +230,11 @@
 
         function createCameraOverlay() {
             const overlay = cameraOverlay;
-            const videoWidth = video.offsetWidth;
-            const videoHeight = video.offsetHeight;
+            const videoWidth = video.videoWidth || width;
+            const videoHeight = video.videoHeight || height;
+
+            // Clear existing overlay
+            overlay.innerHTML = '';
 
             // Create SVG overlay
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -242,10 +242,10 @@
             svg.setAttribute('height', '100%');
             svg.setAttribute('viewBox', `0 0 ${videoWidth} ${videoHeight}`);
 
-            // Create circular face area
+            // Calculate center and radius
             const centerX = videoWidth / 2;
             const centerY = videoHeight / 2;
-            const radius = Math.min(videoWidth, videoHeight) * 0.35; // 35% of smaller dimension
+            const radius = Math.min(videoWidth, videoHeight) * 0.35;
 
             // Outer circle (guide)
             const outerCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -307,30 +307,44 @@
             svg.appendChild(lineVertical);
             svg.appendChild(text);
 
-            overlay.innerHTML = '';
             overlay.appendChild(svg);
         }
 
         function startCamera() {
+            // Stop existing stream if any
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+
             navigator.mediaDevices.getUserMedia({
                     video: {
                         width: {
-                            ideal: 1280
+                            ideal: width
                         },
                         height: {
-                            ideal: 720
+                            ideal: height
                         },
-                        facingMode: 'user'
+                        facingMode: 'user',
+                        // Force landscape orientation
+                        aspectRatio: {
+                            ideal: width / height
+                        }
                     },
                     audio: false
                 })
                 .then(function(s) {
                     stream = s;
                     video.srcObject = stream;
-                    video.play().then(() => {
-                        // Recreate overlay when video starts playing
-                        setTimeout(createCameraOverlay, 100);
-                    });
+
+                    // Apply CSS transform untuk membalik horizontal (mirror effect)
+                    video.style.transform = 'scaleX(-1)';
+
+                    return video.play();
+                })
+                .then(() => {
+                    console.log('Camera started successfully');
+                    // Recreate overlay when video starts playing
+                    setTimeout(createCameraOverlay, 200);
                 })
                 .catch(function(err) {
                     console.log("Error accessing camera: " + err);
@@ -341,7 +355,10 @@
         function stopCamera() {
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
+                stream = null;
             }
+            // Reset transform
+            video.style.transform = '';
         }
 
         function takepicture() {
@@ -353,8 +370,11 @@
                 context.clearRect(0, 0, width, height);
                 croppedContext.clearRect(0, 0, width, height);
 
-                // Draw original image to main canvas
-                context.drawImage(video, 0, 0, width, height);
+                // Apply mirror effect correction untuk canvas
+                context.save();
+                context.scale(-1, 1); // Mirror horizontal
+                context.drawImage(video, -width, 0, width, height);
+                context.restore();
 
                 // Crop to face area only (circular region)
                 const faceImageData = cropToFaceArea(canvas);
@@ -362,7 +382,7 @@
                 // Set the cropped image data to hidden input
                 document.getElementById('face_image').value = faceImageData;
 
-                // Show preview of cropped face area
+                // Show preview of cropped face area (tanpa mirror untuk preview)
                 photoPreview.src = faceImageData;
                 previewSection.style.display = "block";
 
@@ -381,7 +401,7 @@
             const tempCtx = tempCanvas.getContext('2d');
 
             // Gunakan ukuran yang lebih kecil untuk fokus pada wajah
-            const cropSize = Math.min(sourceCanvas.width, sourceCanvas.height) * 0.5; // 50% dari ukuran terkecil
+            const cropSize = Math.min(sourceCanvas.width, sourceCanvas.height) * 0.5;
             const centerX = sourceCanvas.width / 2;
             const centerY = sourceCanvas.height / 2;
 
@@ -389,27 +409,28 @@
             tempCanvas.width = cropSize;
             tempCanvas.height = cropSize;
 
-            // Gambar langsung area wajah dari source canvas
+            // Gambar area wajah dari source canvas
+            // Karena source canvas sudah di-mirror, kita tidak perlu mirror lagi
             tempCtx.drawImage(
                 sourceCanvas,
-                centerX - cropSize / 2, // source x
-                centerY - cropSize / 2, // source y  
-                cropSize, // source width
-                cropSize, // source height
-                0, // destination x
-                0, // destination y
-                cropSize, // destination width
-                cropSize // destination height
+                centerX - cropSize / 2,
+                centerY - cropSize / 2,
+                cropSize,
+                cropSize,
+                0,
+                0,
+                cropSize,
+                cropSize
             );
 
             // Return image data dengan kualitas tinggi
-            return tempCanvas.toDataURL('image/png', 0.95);
+            return tempCanvas.toDataURL('image/jpeg', 0.9);
         }
 
-        // Handle window resize
-        window.addEventListener('resize', function() {
-            if (streaming) {
-                setTimeout(createCameraOverlay, 100);
+        // Handle page visibility change
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopCamera();
             }
         });
 
@@ -428,14 +449,30 @@
         background: #000;
         border-radius: 10px;
         overflow: hidden;
+        position: relative;
     }
 
     #video {
         border-radius: 8px;
         background: #000;
+        display: block;
+        /* Mirror effect untuk live preview */
+        transform: scaleX(-1);
     }
 
     #cameraOverlay {
+        border-radius: 8px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+    }
+
+    #photoPreview {
+        /* Preview tidak di-mirror agar sesuai dengan orientasi asli */
+        transform: scaleX(1);
+        border: 3px solid #007bff;
         border-radius: 8px;
     }
 
@@ -466,6 +503,20 @@
 
         #video {
             max-width: 100%;
+            height: auto;
+        }
+    }
+
+    /* Orientation lock */
+    @media screen and (orientation: portrait) {
+        .camera-container {
+            max-height: 60vh;
+        }
+    }
+
+    @media screen and (orientation: landscape) {
+        .camera-container {
+            max-height: 80vh;
         }
     }
 </style>

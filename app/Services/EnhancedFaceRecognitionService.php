@@ -137,6 +137,50 @@ class EnhancedFaceRecognitionService
             ];
         }
     }
+    public function recognizeMultipleUsersFromImage($imageBase64, $similarityThreshold = 65)
+    {
+        try {
+            $users = DB::table('sys_users')
+                ->whereNotNull('user_image')
+                ->get();
+
+            $recognizedUsers = [];
+
+            foreach ($users as $user) {
+                $userImagesArray = json_decode($user->user_image, true) ?? [];
+
+                if (empty($userImagesArray)) {
+                    continue;
+                }
+
+                $result = $this->compareFacesWithFallback($imageBase64, $userImagesArray, $user->user_id);
+
+                // Simpan SEMUA user yang memenuhi threshold
+                if ($result['success'] && $result['similarity'] >= $similarityThreshold) {
+                    $recognizedUsers[] = [
+                        'user_id' => $user->user_id,
+                        'user_name' => $user->user_name,
+                        'user_email' => $user->user_email,
+                        'user_image' => $user->user_image,
+                        'similarity' => $result['similarity'],
+                        'confidence' => $result['confidence'] ?? 'medium',
+                        'validation_passed' => $result['validation_passed'] ?? false,
+                        'best_match_image' => $result['best_match_image'] ?? null
+                    ];
+                }
+            }
+
+            // Sort by similarity (highest first)
+            usort($recognizedUsers, function ($a, $b) {
+                return $b['similarity'] <=> $a['similarity'];
+            });
+
+            return $recognizedUsers;
+        } catch (\Exception $e) {
+            \Log::error('Multiple user recognition error', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
 
     /**
      * Apply advanced validation rules for better accuracy
@@ -441,6 +485,22 @@ class EnhancedFaceRecognitionService
                 'status' => 'unhealthy',
                 'error' => $e->getMessage()
             ];
+        }
+    }
+    /**
+     * Get all users with their images for recognition
+     */
+    public function getAllUsersForRecognition()
+    {
+        try {
+            return DB::table('sys_users')
+                ->whereNotNull('user_image')
+                ->where('user_image', '!=', '')
+                ->select('user_id', 'user_name', 'user_email', 'user_image')
+                ->get();
+        } catch (\Exception $e) {
+            \Log::error('Error getting users for recognition', ['error' => $e->getMessage()]);
+            return collect();
         }
     }
 

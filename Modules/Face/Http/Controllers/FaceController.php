@@ -82,6 +82,181 @@ class FaceController extends Controller
     }
 
     /**
+     * API untuk real-time face recognition multiple users
+     */
+    /**
+     * API untuk real-time face recognition multiple users - FIXED VERSION
+     */
+    /**
+     * API untuk real-time face recognition multiple users - FIXED VERSION
+     */
+    public function recognizeMultipleFaces(Request $request)
+    {
+        try {
+            $imageData = $request->input('face_image');
+
+            if (!$imageData) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No image data provided'
+                ], 400);
+            }
+
+            // Validasi base64 image
+            if (!preg_match('/^data:image\/(\w+);base64,/', $imageData, $matches)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Format gambar tidak valid'
+                ], 400);
+            }
+
+            // Ambil threshold dari request atau gunakan default 70%
+            $similarityThreshold = $request->input('min_similarity', 70);
+
+            // Ambil semua users yang memiliki foto profil
+            $users = DB::table('sys_users')
+                ->whereNotNull('user_image')
+                ->where('user_image', '!=', '')
+                ->get();
+
+            $recognizedUsers = [];
+            $highestSimilarity = 0;
+            $totalRecognized = 0;
+
+            \Log::info('🔍 Starting multiple face recognition', [
+                'total_users' => count($users),
+                'threshold' => $similarityThreshold
+            ]);
+
+            foreach ($users as $user) {
+                try {
+                    $userImagesArray = json_decode($user->user_image, true) ?? [];
+
+                    if (empty($userImagesArray)) {
+                        continue;
+                    }
+
+                    // Gunakan enhanced service untuk membandingkan dengan semua foto user
+                    $result = $this->faceRecognitionService->compareFacesWithFallback(
+                        $imageData,
+                        $userImagesArray,
+                        $user->user_id
+                    );
+
+                    // SIMPAN SEMUA USER YANG MEMENUHI THRESHOLD 70%
+                    if ($result['success'] && $result['similarity'] >= $similarityThreshold) {
+                        $userData = [
+                            'user_id' => $user->user_id,
+                            'user_name' => $user->user_name,
+                            'user_email' => $user->user_email,
+                            'user_image' => $user->user_image,
+                            'similarity' => $result['similarity'],
+                            'confidence' => $result['confidence'] ?? 'medium',
+                            'best_match_image' => $result['best_match_image'] ?? null,
+                            'validation_passed' => $result['validation_passed'] ?? false,
+                            'validation_score' => $result['validation_score'] ?? 0,
+                            'method' => $result['method'] ?? 'unknown',
+                            'comparison_notes' => $this->generateComparisonNotes($result),
+                            'timestamp' => now()->toDateTimeString(),
+                            'status' => $result['similarity'] >= 70 ? 'VALID' : 'INVALID'
+                        ];
+
+                        $recognizedUsers[] = $userData;
+                        $totalRecognized++;
+
+                        // Update highest similarity untuk stats
+                        if ($result['similarity'] > $highestSimilarity) {
+                            $highestSimilarity = $result['similarity'];
+                        }
+
+                        \Log::info('✅ User recognized', [
+                            'user_id' => $user->user_id,
+                            'user_name' => $user->user_name,
+                            'similarity' => $result['similarity'],
+                            'confidence' => $result['confidence'],
+                            'status' => $result['similarity'] >= 70 ? 'VALID' : 'INVALID'
+                        ]);
+                    } else {
+                        \Log::info('❌ User not recognized', [
+                            'user_id' => $user->user_id,
+                            'user_name' => $user->user_name,
+                            'similarity' => $result['similarity'] ?? 0,
+                            'threshold' => $similarityThreshold,
+                            'success' => $result['success'] ?? false
+                        ]);
+                    }
+                } catch (\Exception $userError) {
+                    \Log::error('Error processing user', [
+                        'user_id' => $user->user_id,
+                        'error' => $userError->getMessage()
+                    ]);
+                    continue;
+                }
+            }
+
+            // Urutkan berdasarkan similarity tertinggi
+            usort($recognizedUsers, function ($a, $b) {
+                return $b['similarity'] <=> $a['similarity'];
+            });
+
+            \Log::info('🎯 Multiple face recognition completed', [
+                'total_recognized' => $totalRecognized,
+                'highest_similarity' => $highestSimilarity,
+                'threshold' => $similarityThreshold,
+                'valid_users' => array_map(function ($user) {
+                    return $user['user_name'] . ' (' . $user['similarity'] . '%)';
+                }, $recognizedUsers)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'recognized_users' => $recognizedUsers, // SEMUA user yang dikenali
+                'total_recognized' => $totalRecognized,
+                'highest_similarity' => $highestSimilarity,
+                'total_users_checked' => count($users),
+                'similarity_threshold' => $similarityThreshold,
+                'timestamp' => now()->toDateTimeString()
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Multiple face recognition error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Recognition error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate comparison notes for detailed results
+     */
+    private function generateComparisonNotes($result)
+    {
+        $notes = [];
+
+        if ($result['success']) {
+            $notes[] = "Similarity: " . $result['similarity'] . "%";
+            $notes[] = "Confidence: " . ($result['confidence'] ?? 'medium');
+            $notes[] = "Method: " . ($result['method'] ?? 'unknown');
+
+            if (isset($result['validation_passed'])) {
+                $notes[] = "Validation: " . ($result['validation_passed'] ? 'Passed' : 'Failed');
+            }
+
+            if (isset($result['best_match_image'])) {
+                $notes[] = "Best match: " . basename($result['best_match_image']);
+            }
+        } else {
+            $notes[] = "Error: " . ($result['error'] ?? 'Unknown error');
+        }
+
+        return implode(' | ', $notes);
+    }
+
+    /**
      * Store a newly created resource in storage.
      * @param Request $request
      * @return Renderable
